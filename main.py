@@ -2,6 +2,7 @@ import numpy as np
 from scipy.signal import lsim, TransferFunction
 import matplotlib.pyplot as plt
 import pandas as pd
+from plot_mp import plot_mp
 
 
 def simulate():
@@ -38,13 +39,16 @@ def simulate():
     u_left_c = np.interp(t, t_rr, left_profile[:, 0])
     u_right_c = np.interp(t, t_rr, right_profile[:, 0])
 
-    tout_l, y_l, x_l = lsim(left, u_left, t)
-    tout_r, y_r, x_r = lsim(right, u_right, t)
+    tprof_traj_l, y_l, x_l = lsim(left, u_left, t)
+    tprof_traj_r, y_r, x_r = lsim(right, u_right, t)
 
     err_pid_l = y_l-u_left
     err_pid_r = y_r-u_right
     err_lerp_l = y_l-u_left_c
     err_lerp_r = y_r-u_right_c
+
+    prof_traj = plot_mp(left_profile[:,0], right_profile[:,0], dt)
+    actual_traj = plot_mp(y_l, y_r, 0.001)
 
     plt.figure(1)
     plt.subplot(221)
@@ -55,6 +59,9 @@ def simulate():
     plt.plot(t, u_right, t, y_r)
     plt.subplot(224)
     plt.plot(t, err_lerp_r, t, np.zeros_like(t))
+
+    plt.figure(2)
+    plt.plot(prof_traj[:, 1], prof_traj[:, 2], prof_traj[:, 3], prof_traj[:, 4], actual_traj[:,1], actual_traj[:,2], actual_traj[:,3],actual_traj[:,4])
     plt.show()
 
 
@@ -78,7 +85,7 @@ simulate()
 # %
 # % Permission is hereby granted, free of charge, to any person obtaining a copy
 # % of this software and associated documentation files (the "Software"), to deal
-# % in the Software without restriction, including without limitation the rights
+# % in the Software withprof_traj restriction, including withprof_traj limitation the rights
 # % to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # % copies of the Software, and to permit persons to whom the Software is
 # % furnished to do so, subject to the following conditions:
@@ -86,10 +93,10 @@ simulate()
 # % The above copyright notice and this permission notice shall be included in all
 # % copies or substantial portions of the Software.
 # %
-# % THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# % THE SOFTWARE IS PROVIDED "AS IS", WITHprof_traj WARRANTY OF ANY KIND, EXPRESS OR
 # % IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # % FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 # % AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 # % LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# % OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# % prof_traj OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # % SOFTWARE.

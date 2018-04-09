@@ -1,8 +1,11 @@
 import numpy as np
 
 def plot_mp(left, right, dt):
-    wheelbase_dia = 26.0
+    wheelbase_dia = 26.0/12
+    startingCenter = (-10.3449+(29./2.+3.25)/12., (27./2.+3.25)/12.)
+
     out = np.zeros((left.shape[0], 5))
+    out[0] = np.array([0, startingCenter[1], startingCenter[0]+wheelbase_dia/2,startingCenter[1],startingCenter[1]-wheelbase_dia/2])
     for i in range(1, out.shape[0]):
         perpendicular = angle_between(out[i-1, 1], out[i-1, 2], out[i-1, 3], out[i-1, 4])-np.pi/2
         out[i, 0] = out[i-1, 0] + dt
@@ -29,11 +32,11 @@ def plot_mp(left, right, dt):
     return out
 
 
-def angle_between(lx, rx, ly, ry):
+def angle_between(lx, ly, rx, ry):
     delta_x = lx-rx
     delta_y = ly-ry
     angle = 0
-    if delta_x==0:
+    if delta_x == 0:
         angle = np.pi/2
     else:
         angle = np.arctan(delta_y/delta_x)
