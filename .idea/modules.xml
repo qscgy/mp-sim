@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/controls_449.iml" filepath="$PROJECT_DIR$/.idea/controls_449.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../mp-sim/.idea/controls_449.iml" filepath="$PROJECT_DIR$/../mp-sim/.idea/controls_449.iml" />
     </modules>
   </component>
 </project>
