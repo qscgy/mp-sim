@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def plot_mp(left, right, dt):
     wheelbase_dia = 26.0/12
     startingCenter = ((29./2.+3.25)/12., (27./2.+3.25)/12.)
@@ -51,6 +52,17 @@ def angle_between(lx, ly, rx, ry):
             return -angle
         else:
             return angle-np.pi
+
+
+# Compute the deviation of the actual trajectory from the profile trajectory at each time step
+def deviation(predicted, actual):
+    pred_T = np.transpose(predicted)
+    act_T = np.transpose(actual)
+    return np.array([dist(pred_T[1], act_T[1], pred_T[2], act_T[2]), dist(pred_T[3], act_T[3], pred_T[4], act_T[4])])
+
+
+def dist(x1, x2, y1, y2):
+    return np.sqrt((x2-x1)**2+(y2-y1)**2)
 
 
 # % Copyright (c) 2018 Sam Ehrenstein.
