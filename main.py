@@ -58,7 +58,6 @@ def simulate():
     prof_traj = plot_mp(u_left_c, u_right_c, dt_sim)    # path from profile
     actual_traj = plot_mp(y_l, y_r, dt_sim)  # actual path followed
     dev = deviation(prof_traj, actual_traj)
-    print(dev)
 
     # Plot left and right error analysis
     plt.figure(1)
@@ -117,7 +116,7 @@ def staircase(profile, t, dt):
         u[i] = profile[int(np.ceil(t[i]/dt)), 0]
     return u
 
-simulate()
+# simulate()
 
 # This file is part of MP-Sim.
 #
