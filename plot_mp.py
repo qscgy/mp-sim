@@ -2,10 +2,11 @@ import numpy as np
 
 # Copyright (c) 2018 Sam Ehrenstein. The full copyright notice is at the bottom of this file.
 
+
 # Plots a motion profile. This is mostly a Python port of Noah Gleason's drawMP R script.
 def plot_mp(left, right, dt):
-    wheelbase_dia = 26.0/12
-    startingCenter = ((29./2.+3.25)/12., (27./2.+3.25)/12.)
+    wheelbase_dia = 26.0/12  # Effective wheelbase; see whitepaper
+    startingCenter = (0, 0)  # can be arbitrary for now
 
     out = np.zeros((left.shape[0], 5))
     out[0] = np.array([0, startingCenter[1], startingCenter[0]+wheelbase_dia/2,startingCenter[1],startingCenter[1]-wheelbase_dia/2])
@@ -35,6 +36,7 @@ def plot_mp(left, right, dt):
     return out
 
 
+# Helper method
 def angle_between(lx, ly, rx, ry):
     delta_x = lx-rx
     delta_y = ly-ry
