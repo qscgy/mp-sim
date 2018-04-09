@@ -8,17 +8,17 @@ from plot_mp import plot_mp
 def simulate():
     kv_l = 0.83
     ka_l = 0.1
-    kp_l = 200
-    ki_l = 1.5
+    kp_l = 1.5
+    ki_l = 0
     kd_l = 0
     kf_v_l = 0  # position feedforward
     kf_p_l = 0  # velocity feedforward
 
     kv_r = 0.85
     ka_r = 0.11
-    kp_r = 200
-    ki_r = 1.5
-    kd_r = 0
+    kp_r = kp_l
+    ki_r = ki_l
+    kd_r = kd_l
     kf_v_r = 0
     kf_p_r = 0
 
@@ -85,7 +85,7 @@ simulate()
 # %
 # % Permission is hereby granted, free of charge, to any person obtaining a copy
 # % of this software and associated documentation files (the "Software"), to deal
-# % in the Software withprof_traj restriction, including withprof_traj limitation the rights
+# % in the Software without restriction, including without limitation the rights
 # % to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # % copies of the Software, and to permit persons to whom the Software is
 # % furnished to do so, subject to the following conditions:
@@ -93,10 +93,10 @@ simulate()
 # % The above copyright notice and this permission notice shall be included in all
 # % copies or substantial portions of the Software.
 # %
-# % THE SOFTWARE IS PROVIDED "AS IS", WITHprof_traj WARRANTY OF ANY KIND, EXPRESS OR
+# % THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # % IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # % FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 # % AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 # % LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# % prof_traj OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# % OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # % SOFTWARE.
