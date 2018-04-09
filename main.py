@@ -5,15 +5,19 @@ import pandas as pd
 from plot_mp import plot_mp, deviation
 
 
+# Copyright (c) 2018 Sam Ehrenstein. The full copyright notice is at the bottom of this file.
+
 def simulate():
-    kv_l = 0.83
-    ka_l = 0.1
-    kp_l = 200
-    ki_l = 1.5
-    kd_l = 0
+    # Left side constants
+    kv_l = 0.83     # Kv
+    ka_l = 0.1      # Ka
+    kp_l = 200      # Kp
+    ki_l = 1.5      # Ki
+    kd_l = 0        # Kd
     kf_v_l = 0  # position feedforward
     kf_p_l = 0  # velocity feedforward
 
+    # Right side constants
     kv_r = 0.85
     ka_r = 0.11
     kp_r = kp_l
@@ -31,8 +35,9 @@ def simulate():
     right_profile = prepare_profile('C:/Users/Sam Ehrenstein/IdeaProjects/robot2017/calciferRightRedLeftProfile.csv')
 
     dt = left_profile[0, 2]
+    dt_sim = 0.001
     t_rr = np.arange(0, left_profile.shape[0]*dt, dt)  # time on RoboRIO (time for setpoint updates)
-    t = np.linspace(0, t_rr[-1], 1000*dt*left_profile.shape[0])  # time for simulation
+    t = np.linspace(0, t_rr[-1], np.floor(1/dt_sim*dt*left_profile.shape[0]))  # time for simulation
 
     # staircased trajectories for using in the simulation
     u_left = staircase(left_profile, t, dt)
@@ -50,11 +55,12 @@ def simulate():
     err_lerp_l = y_l-u_left_c   # error based off of the interpolated trajectory
     err_lerp_r = y_r-u_right_c
 
-    prof_traj = plot_mp(u_left_c, u_right_c, 0.001)    # path from profile
-    actual_traj = plot_mp(y_l, y_r, 0.001)  # actual path followed
+    prof_traj = plot_mp(u_left_c, u_right_c, dt_sim)    # path from profile
+    actual_traj = plot_mp(y_l, y_r, dt_sim)  # actual path followed
     dev = deviation(prof_traj, actual_traj)
     print(dev)
 
+    # Plot left and right error analysis
     plt.figure(1)
     plt.subplot(221)
     sp_l, = plt.plot(t, u_left, label='Setpoint')
@@ -79,6 +85,7 @@ def simulate():
 
     plt.subplots_adjust(hspace=0.4)
 
+    # Plot predicted and actual robot motion in x-y coordinates
     plt.figure(2)
     prof_left, = plt.plot(prof_traj[:, 1], prof_traj[:, 2], label='Predicted Left')
     prof_right, = plt.plot(prof_traj[:, 3], prof_traj[:, 4], label='Predicted Right')
@@ -112,22 +119,17 @@ def staircase(profile, t, dt):
 
 simulate()
 
-# % Copyright (c) 2018 Sam Ehrenstein.
-# %
-# % Permission is hereby granted, free of charge, to any person obtaining a copy
-# % of this software and associated documentation files (the "Software"), to deal
-# % in the Software without restriction, including without limitation the rights
-# % to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# % copies of the Software, and to permit persons to whom the Software is
-# % furnished to do so, subject to the following conditions:
-# %
-# % The above copyright notice and this permission notice shall be included in all
-# % copies or substantial portions of the Software.
-# %
-# % THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# % IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# % FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# % AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# % LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# % OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# % SOFTWARE.
+# This file is part of MP-Sim.
+#
+# This program is free software; you can redistribute it and / or modify it
+# under the terms of the GNU General Public License as published by the Free
+# Software Foundation; either version 3 of the License, or (at your option)
+# any later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with this
+# program; if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+# Fifth Floor, Boston, MA 02110 - 1301 USA
