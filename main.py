@@ -7,7 +7,7 @@ from plot_mp import plot_mp, deviation
 
 # Copyright (c) 2018 Sam Ehrenstein. The full copyright notice is at the bottom of this file.
 
-def simulate():
+def simulate(diagnostics):
     # Left side constants
     kv_l = 0.83     # Kv
     ka_l = 0.1      # Ka
@@ -59,45 +59,46 @@ def simulate():
     actual_traj = plot_mp(y_l, y_r, dt_sim)  # actual path followed
     dev = deviation(prof_traj, actual_traj)
     print(dev)
+    if diagnostics:
+        # Plot left and right error analysis
+        plt.figure(1)
+        plt.subplot(221)
+        sp_l, = plt.plot(t, u_left, label='Setpoint', color='blue')
+        act_l, = plt.plot(t, y_l, label='Actual', color='orange')
+        plt.legend(handles=[sp_l, act_l])
+        plt.title('Left Setpoint and Position')
+        plt.subplot(222)
+        l_err, = plt.plot(t, err_lerp_l, label='Error', color='blue')
+        plt.plot(t, np.zeros_like(t), color='black')
+        plt.legend(handles=[l_err])
+        plt.title('Left Error')
+        plt.subplot(223)
+        sp_r, = plt.plot(t, u_right, label='Setpoint', color='blue')
+        act_r, = plt.plot(t, y_r, label='Actual', color='orange')
+        plt.legend(handles=[sp_r, act_r])
+        plt.title('Right Setpoint and Position')
+        plt.subplot(224)
+        r_err, = plt.plot(t, err_lerp_r, label='Error', color='blue')
+        plt.plot(t, np.zeros_like(t), color='black')
+        plt.legend(handles=[r_err])
+        plt.title('Right Error')
 
-    # Plot left and right error analysis
-    plt.figure(1)
-    plt.subplot(221)
-    sp_l, = plt.plot(t, u_left, label='Setpoint')
-    act_l, = plt.plot(t, y_l, label='Actual')
-    plt.legend(handles=[sp_l, act_l])
-    plt.title('Left Setpoint and Position')
-    plt.subplot(222)
-    l_err, = plt.plot(t, err_lerp_l, label='Error')
-    plt.plot(t, np.zeros_like(t), color='black')
-    plt.legend(handles=[l_err])
-    plt.title('Left Error')
-    plt.subplot(223)
-    sp_r, = plt.plot(t, u_right, label='Setpoint')
-    act_r, = plt.plot(t, y_r, label='Actual')
-    plt.legend(handles=[sp_r, act_r])
-    plt.title('Right Setpoint and Position')
-    plt.subplot(224)
-    r_err, = plt.plot(t, err_lerp_r, label='Error')
-    plt.plot(t, np.zeros_like(t), color='black')
-    plt.legend(handles=[r_err])
-    plt.title('Right Error')
-
-    plt.subplots_adjust(hspace=0.4)
+        plt.subplots_adjust(hspace=0.4)
 
     # Plot predicted and actual robot motion in x-y coordinates
     plt.figure(2)
-    prof_left, = plt.plot(prof_traj[:, 1], prof_traj[:, 2], label='Predicted Left')
-    prof_right, = plt.plot(prof_traj[:, 3], prof_traj[:, 4], label='Predicted Right')
-    actual_left, = plt.plot(actual_traj[:,1], actual_traj[:,2], label='Actual Left')
-    actual_right, = plt.plot(actual_traj[:,3],actual_traj[:,4], label='Actual Right')
+    prof_left, = plt.plot(prof_traj[:, 1], prof_traj[:, 2], label='Predicted Left', color='blue')
+    prof_right, = plt.plot(prof_traj[:, 3], prof_traj[:, 4], label='Predicted Right', color='orange')
+    actual_left, = plt.plot(actual_traj[:,1], actual_traj[:,2], label='Actual Left', color='green')
+    actual_right, = plt.plot(actual_traj[:,3],actual_traj[:,4], label='Actual Right', color='red')
     plt.legend(handles=[prof_left, prof_right, actual_left, actual_right])
 
-    plt.figure(3)
-    l_dev, = plt.plot(t, dev[0], label='Left deviation')
-    r_dev, = plt.plot(t, dev[1], label='Right deviation')
-    plt.title('Deviations from expected x,y position')
-    plt.legend(handles=[l_dev, r_dev])
+    if diagnostics:
+        plt.figure(3)
+        l_dev, = plt.plot(t, dev[0], label='Left deviation')
+        r_dev, = plt.plot(t, dev[1], label='Right deviation')
+        plt.title('Deviations from expected x,y position')
+        plt.legend(handles=[l_dev, r_dev])
 
     plt.show()
 
@@ -117,7 +118,7 @@ def staircase(profile, t, dt):
         u[i] = profile[int(np.ceil(t[i]/dt)), 0]
     return u
 
-simulate()
+# simulate()
 
 # This file is part of MP-Sim.
 #
