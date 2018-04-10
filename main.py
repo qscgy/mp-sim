@@ -7,7 +7,9 @@ from plot_mp import plot_mp, deviation
 
 # Copyright (c) 2018 Sam Ehrenstein. The full copyright notice is at the bottom of this file.
 
-def simulate(diagnostics):
+def simulate(args):
+    diagnostics = args['diagnostics']
+
     # Left side constants
     kv_l = 0.83     # Kv
     ka_l = 0.1      # Ka
@@ -103,6 +105,11 @@ def simulate(diagnostics):
     plt.show()
 
 
+def gui_inputs():
+    args = {}
+    simulate(args)
+
+
 # Reads in a profile and removes the first row (since it's just the number of lines)
 def prepare_profile(filename):
     prof = pd.read_csv(filename, skiprows=[0], header=None).values
@@ -118,7 +125,8 @@ def staircase(profile, t, dt):
         u[i] = profile[int(np.ceil(t[i]/dt)), 0]
     return u
 
-# simulate()
+simulate(False)
+
 
 # This file is part of MP-Sim.
 #
