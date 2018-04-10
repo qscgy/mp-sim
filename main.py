@@ -14,8 +14,8 @@ def simulate():
     kp_l = 1.5     # Kp
     ki_l = 0      # Ki
     kd_l = 0        # Kd
-    kf_v_l = 0  # position feedforward
-    kf_p_l = 0  # velocity feedforward
+    kf_v_l = 0      # position feedforward
+    kf_p_l = 0      # velocity feedforward
 
     # Right side constants
     kv_r = 0.85
