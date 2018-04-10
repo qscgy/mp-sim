@@ -11,8 +11,8 @@ def simulate():
     # Left side constants
     kv_l = 0.83     # Kv
     ka_l = 0.1      # Ka
-    kp_l = 200      # Kp
-    ki_l = 1.5      # Ki
+    kp_l = 1.5     # Kp
+    ki_l = 0      # Ki
     kd_l = 0        # Kd
     kf_v_l = 0  # position feedforward
     kf_p_l = 0  # velocity feedforward
@@ -31,8 +31,8 @@ def simulate():
     right = TransferFunction([kd_r+kf_v_r,kp_r+kf_p_r,ki_r],[ka_r,kd_r+kv_r,kp_r,ki_r])
 
     # read in profile files
-    left_profile = prepare_profile('C:/Users/Sam Ehrenstein/IdeaProjects/robot2017/calciferLeftRedLeftProfile.csv')
-    right_profile = prepare_profile('C:/Users/Sam Ehrenstein/IdeaProjects/robot2017/calciferRightRedLeftProfile.csv')
+    left_profile = prepare_profile('demoLeft.csv')
+    right_profile = prepare_profile('demoRight.csv')
 
     dt = left_profile[0, 2]
     dt_sim = 0.001
@@ -93,11 +93,11 @@ def simulate():
     actual_right, = plt.plot(actual_traj[:,3],actual_traj[:,4], label='Actual Right')
     plt.legend(handles=[prof_left, prof_right, actual_left, actual_right])
 
-    # plt.figure(3)
-    # l_dev, = plt.plot(t, dev[0], label='Left deviation')
-    # r_dev, = plt.plot(t, dev[1], label='Right deviation')
-    # plt.title('Deviations from expected x,y position')
-    # plt.legend(handles=[l_dev, r_dev])
+    plt.figure(3)
+    l_dev, = plt.plot(t, dev[0], label='Left deviation')
+    r_dev, = plt.plot(t, dev[1], label='Right deviation')
+    plt.title('Deviations from expected x,y position')
+    plt.legend(handles=[l_dev, r_dev])
 
     plt.show()
 
