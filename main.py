@@ -107,7 +107,6 @@ def simulate(args):
 
 def gui_inputs():
     args = {}
-    simulate(args)
 
 
 # Reads in a profile and removes the first row (since it's just the number of lines)
@@ -125,7 +124,7 @@ def staircase(profile, t, dt):
         u[i] = profile[int(np.ceil(t[i]/dt)), 0]
     return u
 
-simulate(False)
+simulate({'diagnostics': False})
 
 
 # This file is part of MP-Sim.
