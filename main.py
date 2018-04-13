@@ -3,6 +3,8 @@ from scipy.signal import lsim, TransferFunction
 import matplotlib.pyplot as plt
 import pandas as pd
 from plot_mp import plot_mp, deviation
+import bokeh
+import bokeh.plotting as bp
 
 
 # Copyright (c) 2018 Sam Ehrenstein. The full copyright notice is at the bottom of this file.
@@ -60,7 +62,7 @@ def simulate(args):
     prof_traj = plot_mp(u_left_c, u_right_c, dt_sim)    # path from profile
     actual_traj = plot_mp(y_l, y_r, dt_sim)  # actual path followed
     dev = deviation(prof_traj, actual_traj)
-    print(dev)
+
     if diagnostics:
         # Plot left and right error analysis
         plt.figure(1)
@@ -94,6 +96,10 @@ def simulate(args):
     actual_left, = plt.plot(actual_traj[:,1], actual_traj[:,2], label='Actual Left', color='green')
     actual_right, = plt.plot(actual_traj[:,3],actual_traj[:,4], label='Actual Right', color='red')
     plt.legend(handles=[prof_left, prof_right, actual_left, actual_right])
+
+    p = bp.figure(plot_width=400, plot_height=400, x_range=(0, 12), y_range=(-10, 2))
+    p.multi_line([prof_traj[:,1], prof_traj[:,3]], [prof_traj[:,2], prof_traj[:,4]], alpha=[0.8, 0.3], line_width=4)
+    bp.show(p)
 
     if diagnostics:
         plt.figure(3)
