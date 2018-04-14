@@ -4,7 +4,7 @@ import pandas as pd
 from plot_mp import plot_mp, deviation
 import bokeh.plotting as bp
 from bokeh.layouts import gridplot, widgetbox, column
-from bokeh.models.widgets import Panel, Tabs, TextInput, Button
+from bokeh.models.widgets import Panel, Tabs, TextInput, Button, Div
 from bokeh.io import curdoc
 from bokeh.models import ColumnDataSource
 
@@ -80,6 +80,7 @@ def update_sim():
     kd = float(kd_input.value)
     args = {'kp': kp, 'ki': ki, 'kf': kf, 'kd': kd}
     global u, y, err, pt, at, dev
+    status.text = 'Simulating...'
     out = simulate(args)
     u.data = out[0].data
     y.data = out[1].data
@@ -88,6 +89,7 @@ def update_sim():
     at.data = out[4].data
     dev.data = out[5].data
     print('updated plot')
+    status.text = 'Ready.'
 
 
 # Reads in a profile and removes the first row (since it's just the number of lines)
@@ -139,9 +141,10 @@ ki_input = TextInput(title='Ki', value='0')
 kf_v_input = TextInput(title='Kf', value='0')
 kd_input = TextInput(title='Kd', value='0')
 submit = Button(label='Simulate', button_type='success')
+status = Div(text='Ready.')
 submit.on_click(update_sim)
 
-inputs = widgetbox(kp_input, ki_input, kd_input, kf_v_input, submit)
+inputs = widgetbox(kp_input, ki_input, kd_input, kf_v_input, submit, status)
 p_tab = Panel(child=column(inputs, p1), title='Path')
 
 curdoc().add_root(Tabs(tabs=[p_tab, dev_tab, Panel(child=analytics, title='Analytics')]))
