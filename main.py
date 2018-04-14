@@ -5,6 +5,7 @@ import pandas as pd
 from plot_mp import plot_mp, deviation
 import bokeh
 import bokeh.plotting as bp
+from bokeh.layouts import row
 
 
 # Copyright (c) 2018 Sam Ehrenstein. The full copyright notice is at the bottom of this file.
@@ -63,8 +64,22 @@ def simulate(args):
     actual_traj = plot_mp(y_l, y_r, dt_sim)  # actual path followed
     dev = deviation(prof_traj, actual_traj)
 
+    # Plot predicted and actual robot motion in x-y coordinates
+    p1 = bp.figure(plot_width=500, plot_height=500, x_range=(-1, 11), y_range=(-10, 2))
+    p1.line(prof_traj[:, 1], prof_traj[:, 2], line_width=2, line_color='navy', legend='Predicted left')
+    p1.line(prof_traj[:, 3], prof_traj[:, 4], line_width=2, line_color='orange', legend='Predicted right')
+    p1.line(actual_traj[:, 1], actual_traj[:, 2], line_width=2, line_color='green', legend='Actual left')
+    p1.line(actual_traj[:, 3], actual_traj[:, 4], line_width=2, line_color='red', legend='Actual right')
+
+    dev_plot = bp.figure(plot_width=500, plot_height=500)
+    dev_plot.line(t, dev[0], line_color='green', legend='Left deviation')
+    dev_plot.line(t, dev[1], line_color='red', legend='Right deviation')
+
+    bp.show(row(p1, dev_plot))
+
     if diagnostics:
         # Plot left and right error analysis
+
         plt.figure(1)
         plt.subplot(221)
         sp_l, = plt.plot(t, u_left, label='Setpoint', color='blue')
@@ -86,22 +101,8 @@ def simulate(args):
         plt.plot(t, np.zeros_like(t), color='black')
         plt.legend(handles=[r_err])
         plt.title('Right Error')
-
         plt.subplots_adjust(hspace=0.4)
 
-    # Plot predicted and actual robot motion in x-y coordinates
-    plt.figure(2)
-    prof_left, = plt.plot(prof_traj[:, 1], prof_traj[:, 2], label='Predicted Left', color='blue')
-    prof_right, = plt.plot(prof_traj[:, 3], prof_traj[:, 4], label='Predicted Right', color='orange')
-    actual_left, = plt.plot(actual_traj[:,1], actual_traj[:,2], label='Actual Left', color='green')
-    actual_right, = plt.plot(actual_traj[:,3],actual_traj[:,4], label='Actual Right', color='red')
-    plt.legend(handles=[prof_left, prof_right, actual_left, actual_right])
-
-    p = bp.figure(plot_width=400, plot_height=400, x_range=(0, 12), y_range=(-10, 2))
-    p.multi_line([prof_traj[:,1], prof_traj[:,3]], [prof_traj[:,2], prof_traj[:,4]], alpha=[0.8, 0.3], line_width=4)
-    bp.show(p)
-
-    if diagnostics:
         plt.figure(3)
         l_dev, = plt.plot(t, dev[0], label='Left deviation')
         r_dev, = plt.plot(t, dev[1], label='Right deviation')

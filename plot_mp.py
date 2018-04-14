@@ -59,6 +59,7 @@ def angle_between(lx, ly, rx, ry):
 
 
 # Compute the deviation of the actual trajectory from the profile trajectory at each time step
+# We define deviation as the Euclidean distance between the predicted and actual positions
 def deviation(predicted, actual):
     pred_T = np.transpose(predicted)
     act_T = np.transpose(actual)
