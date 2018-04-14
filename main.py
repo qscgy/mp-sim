@@ -1,27 +1,28 @@
 import numpy as np
 from scipy.signal import lsim, TransferFunction
-import matplotlib.pyplot as plt
 import pandas as pd
 from plot_mp import plot_mp, deviation
-import bokeh
 import bokeh.plotting as bp
-from bokeh.layouts import gridplot
-from bokeh.models.widgets import Panel, Tabs
+from bokeh.layouts import gridplot, widgetbox, column
+from bokeh.models.widgets import Panel, Tabs, TextInput, Button
+from bokeh.io import curdoc
+from bokeh.models import ColumnDataSource
 
 
 # Copyright (c) 2018 Sam Ehrenstein. The full copyright notice is at the bottom of this file.
 
-def simulate(args):
-    diagnostics = args['diagnostics']
 
+
+
+def simulate(args):
     # Left side constants
-    kv_l = 0.83     # Kv
-    ka_l = 0.1      # Ka
-    kp_l = 1.5     # Kp
-    ki_l = 0      # Ki
-    kd_l = 0        # Kd
-    kf_v_l = 0      # position feedforward
-    kf_p_l = 0      # velocity feedforward
+    kv_l = 0.83         # Kv
+    ka_l = 0.1          # Ka
+    kp_l = args['kp']   # Kp
+    ki_l = 0            # Ki
+    kd_l = 0            # Kd
+    kf_v_l = 0          # position feedforward
+    kf_p_l = 0          # velocity feedforward
 
     # Right side constants
     kv_r = 0.85
@@ -65,42 +66,20 @@ def simulate(args):
     actual_traj = plot_mp(y_l, y_r, dt_sim)  # actual path followed
     dev = deviation(prof_traj, actual_traj)
 
-    make_plots(t, (u_left, u_right), (y_l, y_r), (err_lerp_l, err_lerp_r), prof_traj, actual_traj, dev)
+    # Create ColumnDataSources for each plot
+    u_time = ColumnDataSource(data=dict(t=t, l=u_left, r=u_right))
+    y_time = ColumnDataSource(data=dict(t=t, l=y_l, r=y_r))
+    err_time = ColumnDataSource(data=dict(t=t, l=err_lerp_l, r=err_lerp_r))
+    pt_data = ColumnDataSource(data=dict(lx=prof_traj[:,1], ly=prof_traj[:,2], rx=prof_traj[:,3], ry=prof_traj[:,4]))
+    at_data = ColumnDataSource(data=dict(lx=actual_traj[:,1], ly=actual_traj[:,2], rx=actual_traj[:,3], ry=actual_traj[:,4]))
+    dev_data = ColumnDataSource(data=dict(t=t, l=dev[0], r=dev[1]))
+    return u_time, y_time, err_time, pt_data, at_data, dev_data
 
 
-def make_plots(t, u, y, err, prof_traj, actual_traj, dev):
-    # Plot predicted and actual robot motion in x-y coordinates
-    p1 = bp.figure(plot_width=500, plot_height=500, x_range=(-1, 11), y_range=(-10, 2))
-    p1.line(prof_traj[:, 1], prof_traj[:, 2], line_width=2, line_color='navy', legend='Predicted left')
-    p1.line(prof_traj[:, 3], prof_traj[:, 4], line_width=2, line_color='orange', legend='Predicted right')
-    p1.line(actual_traj[:, 1], actual_traj[:, 2], line_width=2, line_color='green', legend='Actual left')
-    p1.line(actual_traj[:, 3], actual_traj[:, 4], line_width=2, line_color='red', legend='Actual right')
-    p_tab = Panel(child=p1, title='Path')
+def update_sim(attrname, old, new):
+    kp = float(kp_input.value)
 
-    # Plot deviation
-    dev_plot = bp.figure(plot_width=500, plot_height=500)
-    dev_plot.line(t, dev[0], line_color='green', legend='Left deviation')
-    dev_plot.line(t, dev[1], line_color='red', legend='Right deviation')
-    dev_tab = Panel(child=dev_plot, title='Deviation')
-
-    # Plot analytics for each profile
-    left_sp = bp.figure(plot_width=250, plot_height=250, title='Left Setpoint and Position')
-    left_sp.line(t, u[0], line_color='blue', legend='Setpoint')
-    left_sp.line(t, y[0], line_color='orange', legend='Actual')
-    right_sp = bp.figure(plot_width=250, plot_height=250, title='Right Setpoint and Position')
-    right_sp.line(t, u[1], line_color='blue', legend='Setpoint')
-    right_sp.line(t, y[1], line_color='orange', legend='Actual')
-    left_err = bp.figure(plot_width=250, plot_height=250, title='Left Error')
-    left_err.line(t, err[0], line_color='blue', legend='Error')
-    right_err = bp.figure(plot_width=250, plot_height=250, title='Right Error')
-    right_err.line(t, err[1], line_color='blue', legend='Error')
-    analytics = gridplot([[left_sp, right_sp], [left_err, right_err]])
-
-    bp.show(Tabs(tabs=[p_tab, dev_tab, Panel(child=analytics, title='Analytics')]))
-
-
-def gui_inputs():
-    args = {'diagnostics': False}
+    args = {'kp': kp}
     simulate(args)
 
 
@@ -119,7 +98,42 @@ def staircase(profile, t, dt):
         u[i] = profile[int(np.ceil(t[i]/dt)), 0]
     return u
 
-gui_inputs()
+
+u, y, err, pt, at, dev = simulate({'kp': 1.5})
+
+# Plot predicted and actual robot motion in x-y coordinates
+p1 = bp.figure(plot_width=500, plot_height=500, x_range=(-1, 11), y_range=(-10, 2))
+p1.line('lx', 'ly', source=pt, line_width=2, line_color='navy', legend='Predicted left')
+p1.line('rx', 'ry', source=pt, line_width=2, line_color='orange', legend='Predicted right')
+p1.line('lx', 'ly', source=at, line_width=2, line_color='green', legend='Actual left')
+p1.line('rx', 'ry', source=at, line_width=2, line_color='red', legend='Actual right')
+
+# Plot deviation
+dev_plot = bp.figure(plot_width=500, plot_height=500)
+dev_plot.line('t', 'l', source=dev, line_color='green', legend='Left deviation')
+dev_plot.line('t', 'r', source=dev, line_color='red', legend='Right deviation')
+dev_tab = Panel(child=dev_plot, title='Deviation')
+
+# Plot analytics for each profile
+left_sp = bp.figure(plot_width=250, plot_height=250, title='Left Setpoint and Position')
+left_sp.line('t', 'l', source=u, line_color='blue', legend='Setpoint')
+left_sp.line('t', 'l', source=y, line_color='orange', legend='Actual')
+right_sp = bp.figure(plot_width=250, plot_height=250, title='Right Setpoint and Position')
+right_sp.line('t', 'r', source=u, line_color='blue', legend='Setpoint')
+right_sp.line('t', 'r', source=y, line_color='orange', legend='Actual')
+left_err = bp.figure(plot_width=250, plot_height=250, title='Left Error')
+left_err.line('t', 'l', source=err, line_color='blue', legend='Error')
+right_err = bp.figure(plot_width=250, plot_height=250, title='Right Error')
+right_err.line('t', 'r', source=err, line_color='blue', legend='Error')
+analytics = gridplot([[left_sp, right_sp], [left_err, right_err]])
+
+kp_input = TextInput(title='Kp', value='1.5')
+submit = Button(label='Simulate', button_type='success')
+
+inputs = widgetbox(kp_input, submit)
+p_tab = Panel(child=column(inputs, p1), title='Path')
+
+bp.show(Tabs(tabs=[p_tab, dev_tab, Panel(child=analytics, title='Analytics')]))
 
 
 # This file is part of MP-Sim.
