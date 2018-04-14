@@ -76,11 +76,14 @@ def simulate(args):
     return u_time, y_time, err_time, pt_data, at_data, dev_data
 
 
-def update_sim(attrname, old, new):
+def update_sim():
     kp = float(kp_input.value)
-
+    print('kp: '+str(kp))
     args = {'kp': kp}
-    simulate(args)
+    global u, y, err, pt, at, dev
+    out = simulate(args)
+    pt.data = out[3].data
+    at.data = out[4].data
 
 
 # Reads in a profile and removes the first row (since it's just the number of lines)
@@ -129,12 +132,13 @@ analytics = gridplot([[left_sp, right_sp], [left_err, right_err]])
 
 kp_input = TextInput(title='Kp', value='1.5')
 submit = Button(label='Simulate', button_type='success')
+submit.on_click(update_sim)
 
 inputs = widgetbox(kp_input, submit)
 p_tab = Panel(child=column(inputs, p1), title='Path')
 
-bp.show(Tabs(tabs=[p_tab, dev_tab, Panel(child=analytics, title='Analytics')]))
-
+curdoc().add_root(Tabs(tabs=[p_tab, dev_tab, Panel(child=analytics, title='Analytics')]))
+curdoc().title = 'Motion Profile Simulator'
 
 # This file is part of MP-Sim.
 #
