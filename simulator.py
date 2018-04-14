@@ -8,10 +8,7 @@ from bokeh.models.widgets import Panel, Tabs, TextInput, Button
 from bokeh.io import curdoc
 from bokeh.models import ColumnDataSource
 
-
 # Copyright (c) 2018 Sam Ehrenstein. The full copyright notice is at the bottom of this file.
-
-
 
 
 def simulate(args):
@@ -19,9 +16,9 @@ def simulate(args):
     kv_l = 0.83         # Kv
     ka_l = 0.1          # Ka
     kp_l = args['kp']   # Kp
-    ki_l = 0            # Ki
-    kd_l = 0            # Kd
-    kf_v_l = 0          # position feedforward
+    ki_l = args['ki']   # Ki
+    kd_l = args['kd']   # Kd
+    kf_v_l = args['kf']  # position feedforward
     kf_p_l = 0          # velocity feedforward
 
     # Right side constants
@@ -30,12 +27,12 @@ def simulate(args):
     kp_r = kp_l
     ki_r = ki_l
     kd_r = kd_l
-    kf_v_r = 0
+    kf_v_r = kf_v_l
     kf_p_r = 0
 
     # create system model
-    left = TransferFunction([kd_l+kf_v_l,kp_l+kf_p_l,ki_l],[ka_l,kd_l+kv_l,kp_l,ki_l])
-    right = TransferFunction([kd_r+kf_v_r,kp_r+kf_p_r,ki_r],[ka_r,kd_r+kv_r,kp_r,ki_r])
+    left = TransferFunction([kd_l+kf_v_l, kp_l+kf_p_l, ki_l], [ka_l, kd_l+kv_l, kp_l, ki_l])
+    right = TransferFunction([kd_r+kf_v_r, kp_r+kf_p_r, ki_r], [ka_r, kd_r+kv_r, kp_r, ki_r])
 
     # read in profile files
     left_profile = prepare_profile('demoLeft.csv')
@@ -78,12 +75,15 @@ def simulate(args):
 
 def update_sim():
     kp = float(kp_input.value)
-    print('kp: '+str(kp))
-    args = {'kp': kp}
+    ki = float(ki_input.value)
+    kf = float(kf_v_input.value)
+    kd = float(kd_input.value)
+    args = {'kp': kp, 'ki': ki, 'kf': kf, 'kd': kd}
     global u, y, err, pt, at, dev
     out = simulate(args)
     pt.data = out[3].data
     at.data = out[4].data
+    print('updated plot')
 
 
 # Reads in a profile and removes the first row (since it's just the number of lines)
@@ -102,7 +102,7 @@ def staircase(profile, t, dt):
     return u
 
 
-u, y, err, pt, at, dev = simulate({'kp': 1.5})
+u, y, err, pt, at, dev = simulate({'kp': 1.5, 'ki': 0, 'kf': 0, 'kd': 0})
 
 # Plot predicted and actual robot motion in x-y coordinates
 p1 = bp.figure(plot_width=500, plot_height=500, x_range=(-1, 11), y_range=(-10, 2))
@@ -131,14 +131,18 @@ right_err.line('t', 'r', source=err, line_color='blue', legend='Error')
 analytics = gridplot([[left_sp, right_sp], [left_err, right_err]])
 
 kp_input = TextInput(title='Kp', value='1.5')
+ki_input = TextInput(title='Ki', value='0')
+kf_v_input = TextInput(title='Kf', value='0')
+kd_input = TextInput(title='Kd', value='0')
 submit = Button(label='Simulate', button_type='success')
 submit.on_click(update_sim)
 
-inputs = widgetbox(kp_input, submit)
+inputs = widgetbox(kp_input, ki_input, kd_input, kf_v_input, submit)
 p_tab = Panel(child=column(inputs, p1), title='Path')
 
 curdoc().add_root(Tabs(tabs=[p_tab, dev_tab, Panel(child=analytics, title='Analytics')]))
 curdoc().title = 'Motion Profile Simulator'
+
 
 # This file is part of MP-Sim.
 #
