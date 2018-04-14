@@ -5,7 +5,8 @@ import pandas as pd
 from plot_mp import plot_mp, deviation
 import bokeh
 import bokeh.plotting as bp
-from bokeh.layouts import row
+from bokeh.layouts import gridplot
+from bokeh.models.widgets import Panel, Tabs
 
 
 # Copyright (c) 2018 Sam Ehrenstein. The full copyright notice is at the bottom of this file.
@@ -64,52 +65,38 @@ def simulate(args):
     actual_traj = plot_mp(y_l, y_r, dt_sim)  # actual path followed
     dev = deviation(prof_traj, actual_traj)
 
+    make_plots(t, (u_left, u_right), (y_l, y_r), (err_lerp_l, err_lerp_r), prof_traj, actual_traj, dev)
+
+
+def make_plots(t, u, y, err, prof_traj, actual_traj, dev):
     # Plot predicted and actual robot motion in x-y coordinates
     p1 = bp.figure(plot_width=500, plot_height=500, x_range=(-1, 11), y_range=(-10, 2))
     p1.line(prof_traj[:, 1], prof_traj[:, 2], line_width=2, line_color='navy', legend='Predicted left')
     p1.line(prof_traj[:, 3], prof_traj[:, 4], line_width=2, line_color='orange', legend='Predicted right')
     p1.line(actual_traj[:, 1], actual_traj[:, 2], line_width=2, line_color='green', legend='Actual left')
     p1.line(actual_traj[:, 3], actual_traj[:, 4], line_width=2, line_color='red', legend='Actual right')
+    p_tab = Panel(child=p1, title='Path')
 
+    # Plot deviation
     dev_plot = bp.figure(plot_width=500, plot_height=500)
     dev_plot.line(t, dev[0], line_color='green', legend='Left deviation')
     dev_plot.line(t, dev[1], line_color='red', legend='Right deviation')
+    dev_tab = Panel(child=dev_plot, title='Deviation')
 
-    bp.show(row(p1, dev_plot))
+    # Plot analytics for each profile
+    left_sp = bp.figure(plot_width=250, plot_height=250, title='Left Setpoint and Position')
+    left_sp.line(t, u[0], line_color='blue', legend='Setpoint')
+    left_sp.line(t, y[0], line_color='orange', legend='Actual')
+    right_sp = bp.figure(plot_width=250, plot_height=250, title='Right Setpoint and Position')
+    right_sp.line(t, u[1], line_color='blue', legend='Setpoint')
+    right_sp.line(t, y[1], line_color='orange', legend='Actual')
+    left_err = bp.figure(plot_width=250, plot_height=250, title='Left Error')
+    left_err.line(t, err[0], line_color='blue', legend='Error')
+    right_err = bp.figure(plot_width=250, plot_height=250, title='Right Error')
+    right_err.line(t, err[1], line_color='blue', legend='Error')
+    analytics = gridplot([[left_sp, right_sp], [left_err, right_err]])
 
-    if diagnostics:
-        # Plot left and right error analysis
-
-        plt.figure(1)
-        plt.subplot(221)
-        sp_l, = plt.plot(t, u_left, label='Setpoint', color='blue')
-        act_l, = plt.plot(t, y_l, label='Actual', color='orange')
-        plt.legend(handles=[sp_l, act_l])
-        plt.title('Left Setpoint and Position')
-        plt.subplot(222)
-        l_err, = plt.plot(t, err_lerp_l, label='Error', color='blue')
-        plt.plot(t, np.zeros_like(t), color='black')
-        plt.legend(handles=[l_err])
-        plt.title('Left Error')
-        plt.subplot(223)
-        sp_r, = plt.plot(t, u_right, label='Setpoint', color='blue')
-        act_r, = plt.plot(t, y_r, label='Actual', color='orange')
-        plt.legend(handles=[sp_r, act_r])
-        plt.title('Right Setpoint and Position')
-        plt.subplot(224)
-        r_err, = plt.plot(t, err_lerp_r, label='Error', color='blue')
-        plt.plot(t, np.zeros_like(t), color='black')
-        plt.legend(handles=[r_err])
-        plt.title('Right Error')
-        plt.subplots_adjust(hspace=0.4)
-
-        plt.figure(3)
-        l_dev, = plt.plot(t, dev[0], label='Left deviation')
-        r_dev, = plt.plot(t, dev[1], label='Right deviation')
-        plt.title('Deviations from expected x,y position')
-        plt.legend(handles=[l_dev, r_dev])
-
-    plt.show()
+    bp.show(Tabs(tabs=[p_tab, dev_tab, Panel(child=analytics, title='Analytics')]))
 
 
 def gui_inputs():
