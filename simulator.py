@@ -81,8 +81,12 @@ def update_sim():
     args = {'kp': kp, 'ki': ki, 'kf': kf, 'kd': kd}
     global u, y, err, pt, at, dev
     out = simulate(args)
+    u.data = out[0].data
+    y.data = out[1].data
+    err.data = out[2].data
     pt.data = out[3].data
     at.data = out[4].data
+    dev.data = out[5].data
     print('updated plot')
 
 
