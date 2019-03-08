@@ -8,7 +8,7 @@ from bokeh.io import curdoc
 from bokeh.models import ColumnDataSource
 import matplotlib.pyplot as plt
 
-# Copyright (c) 2018 Sam Ehrenstein. The full copyright notice is at the bottom of this file.
+# Copyright (c) 2018-2019 Sam Ehrenstein. The full copyright notice is at the bottom of this file.
 
 def prepare_profile(filename):
     prof = pd.read_csv(filename, skiprows=[0], header=None).values
@@ -43,7 +43,7 @@ def simulate_motor(kp, ki, kd, ka, kv, profile, t):
         vc = kp*err[i] + ki*integral + kd*dedt + kv*profile[i, 1]
         if vc > 9:
             vc = 9
-        print(vc)
+        # print(vc)
     return pos, err, vel
 
 def simulate(args):
@@ -54,13 +54,14 @@ def simulate(args):
     kp = args['kp']
     ki = args['ki']
     kd = args['kd']
-    kf = args['kf']
+    left_file = args['leftprof']
+    right_file = args['rightprof']
 
     dt = 0.001
     dt_prof = 0.05
 
-    left_profile = prepare_profile('demoLeft.csv')
-    right_profile = prepare_profile('demoRight.csv')
+    left_profile = prepare_profile(left_file)
+    right_profile = prepare_profile(right_file)
     # print('left profile', left_profile.shape)
     t = np.arange(0, left_profile.shape[0]*dt_prof-dt, dt)
     u_left = staircase(left_profile, t, dt, dt_prof)
@@ -106,10 +107,26 @@ def simulate(args):
 k_args = {'kp':10,
 'ki':0,
 'kd':0,
-'kf':0.0,
 'kv_l':0.83,
 'ka_l':0.1,
 'kv_r':0.85,
-'ka_r':0.11
+'ka_r':0.11,
+'leftprof':'demoLeft.csv',
+'rightprof':'demoRight.csv'
 }
 simulate(k_args)
+
+# This file is part of MP-Sim.
+#
+# This program is free software; you can redistribute it and / or modify it
+# under the terms of the GNU General Public License as published by the Free
+# Software Foundation; either version 3 of the License, or (at your option)
+# any later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with this
+# program; if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+# Fifth Floor, Boston, MA 02110 - 1301 USA

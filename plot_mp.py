@@ -1,7 +1,6 @@
 import numpy as np
 
-# Copyright (c) 2018 Sam Ehrenstein. The full copyright notice is at the bottom of this file.
-
+# Copyright (c) 2018-2019 Sam Ehrenstein. The full copyright notice is at the bottom of this file.
 
 # Plots a motion profile. This is mostly a Python port of Noah Gleason's drawMP R script.
 def plot_mp(left, right, dt):
