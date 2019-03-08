@@ -24,12 +24,13 @@ def staircase(profile, t, dt, dt_prof):
         u[int(i*ratio):int((i+1)*ratio)] = profile[i]
     return u
 
-def simulate_motor(kp, ki, kd, kf, ka, kv, profile, t):
+def simulate_motor(kp, ki, kd, ka, kv, profile, t):
     pos = np.zeros_like(t)
     vel = np.zeros_like(t)
     err = np.zeros_like(t)
     integral = 0
-    vc = 12 - 3    # replace 3 with the intercept voltage
+    vc = 9
+    print(kv)
     for i in range(1, t.shape[0]):
         dt = t[i]-t[i-1]
         c2 = ka/kv*(vc/kv-vel[i-1])
@@ -39,10 +40,11 @@ def simulate_motor(kp, ki, kd, kf, ka, kv, profile, t):
         err[i] = profile[i, 0]-pos[i]
         dedt = (err[i]-err[i-1])/dt
         integral += err[i]*dt
-        vc = kp*err[i] + ki*integral + kd*dedt + kf*profile[i, 1]
+        vc = kp*err[i] + ki*integral + kd*dedt + kv*profile[i, 1]
         if vc > 9:
             vc = 9
-    return pos, err
+        print(vc)
+    return pos, err, vel
 
 def simulate(args):
     kv_l = args['kv_l']
@@ -61,24 +63,53 @@ def simulate(args):
     right_profile = prepare_profile('demoRight.csv')
     # print('left profile', left_profile.shape)
     t = np.arange(0, left_profile.shape[0]*dt_prof-dt, dt)
-    print('t shape', t.shape)
     u_left = staircase(left_profile, t, dt, dt_prof)
     u_right = staircase(right_profile, t, dt, dt_prof)
 
-    pos_l, err_l = simulate_motor(kp, ki, kd, kf, ka_l, kv_l, u_left, t)
-    pos_r, err_r = simulate_motor(kp, ki, kd, kf, ka_r, kv_r, u_right, t)
+    pos_l, err_l, vel_l = simulate_motor(kp, ki, kd, ka_l, kv_l, u_left, t)
+    pos_r, err_r, vel_r = simulate_motor(kp, ki, kd, ka_r, kv_r, u_right, t)
 
-    print(t.shape)
-    plt.plot(t, u_left[:,0], t, pos_l)
+    trajectories = plot_mp(pos_l, pos_r, dt)
+    trajectories_prof = plot_mp(u_left[:,0], u_right[:,0], dt)
+
+    plt.figure()
+    plt.plot(trajectories_prof[:,1], trajectories_prof[:,2], label='intended left')
+    plt.plot(trajectories_prof[:,3], trajectories_prof[:,4], label='intended right')
+    plt.plot(trajectories[:,1], trajectories[:,2], label='actual left')
+    plt.plot(trajectories[:,3], trajectories[:,4], label='actual rigt')
+    plt.title('Intended vs. Actual Trajectories')
+    plt.xlabel('x displacement (ft)')
+    plt.ylabel('y displacement (ft')
+    plt.legend()
+
+    plt.figure(figsize=(8, 8))
+    plt.subplot(211)
+    plt.plot(t, u_left[:,0], label='left profile')
+    plt.plot(t, pos_l, label='actual left distance')
+    plt.title('Left side path')
+    plt.xlabel('time (s)')
+    plt.ylabel('distance (ft)')
+    plt.legend()
+    plt.subplot(212)
+    plt.plot(t, u_right[:,0], label='right profile')
+    plt.plot(t, pos_r, label='actual right distance')
+    plt.title('Right side path')
+    plt.xlabel('time (s)')
+    plt.ylabel('distance (ft)')
+    plt.legend()
+
+    plt.figure()
+    plt.plot(t, err_l)
+
     plt.show()
 
-k_args = {'kp':0.8,
+k_args = {'kp':10,
 'ki':0,
 'kd':0,
-'kf':0.8,
+'kf':0.0,
 'kv_l':0.83,
-'ka_l':0.11,
+'ka_l':0.1,
 'kv_r':0.85,
-'ka_r':0.1
+'ka_r':0.11
 }
 simulate(k_args)

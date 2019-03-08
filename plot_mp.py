@@ -41,21 +41,22 @@ def angle_between(lx, ly, rx, ry):
     delta_x = lx-rx
     delta_y = ly-ry
     angle = 0
-    if delta_x == 0:
-        angle = np.pi/2
-    else:
-        angle = np.arctan(delta_y/delta_x)
+    # if delta_x == 0:
+    #     angle = np.pi/2
+    # else:
+    #     angle = np.arctan(delta_y/delta_x)
 
-    if delta_y>0:
-        if delta_x>0:
-            return angle
-        else:
-            return np.pi-angle
-    else:
-        if delta_x>0:
-            return -angle
-        else:
-            return angle-np.pi
+    # if delta_y>0:
+    #     if delta_x>0:
+    #         return angle
+    #     else:
+    #         return np.pi-angle
+    # else:
+    #     if delta_x>0:
+    #         return -angle
+    #     else:
+    #         return angle-np.pi
+    return np.arctan2(delta_y, delta_x)
 
 
 # Compute the deviation of the actual trajectory from the profile trajectory at each time step
