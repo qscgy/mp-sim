@@ -12,39 +12,67 @@ import matplotlib.pyplot as plt
 
 def prepare_profile(filename):
     prof = pd.read_csv(filename, skiprows=[0], header=None).values
-    prof = prof[:, 0:3]
+    prof = prof[:, 0:5]
     return prof
 
 # Expands the profile to be the length of t such that u(t) has the last value that would have been sent
 # This is used instead of interpolating because the setpoint is updated slower than the robot's response time
 def staircase(profile, t, dt, dt_prof):
-    u = np.zeros((t.shape[0], 3))
+    u = np.zeros((t.shape[0], 5))
     ratio = dt_prof/dt
     for i in range(profile.shape[0]):
         u[int(i*ratio):int((i+1)*ratio)] = profile[i]
     return u
 
-def simulate_motor(kp, ki, kd, ka, kv, profile, t):
-    pos = np.zeros_like(t)
-    vel = np.zeros_like(t)
-    err = np.zeros_like(t)
-    integral = 0
-    vc = 9
-    print(kv)
+def next_motor(vc, kp, ki, kd, ka, kv, last_pos, last_err,last_vel, ig, xset, vset, dt):
+    c2 = ka/kv*(vc/kv-last_vel)
+    c1 = -c2 + last_pos
+    pos = c1 + vc/kv*dt + c2*np.exp(-kv/ka*dt)
+    vel= vc/kv-c2*kv/ka*np.exp(-kv/ka*dt)
+    err = xset-pos
+    dedt = (err-last_err)/dt
+    ig += err*dt
+    vc = kp*err + ki*ig + kd*dedt + kv*vset
+    if vc > 9:
+        vc = 9
+    return np.array([pos, err, vel]), vc, ig
+def simulate_tank(kp, ki, kd, lka, lkv, rka, rkv, lprofile, rprofile, t, wb):
+    pose = np.zeros((t.shape[0], 6))
+    l_ig = 0
+    r_ig = 0
+    theta = np.zeros_like(t)
+    lvc = 9
+    rvc = 9
     for i in range(1, t.shape[0]):
         dt = t[i]-t[i-1]
-        c2 = ka/kv*(vc/kv-vel[i-1])
-        c1 = -c2 + pos[i-1]
-        pos[i] = c1 + vc/kv*dt + c2*np.exp(-kv/ka*dt)
-        vel[i] = vc/kv-c2*kv/ka*np.exp(-kv/ka*dt)
-        err[i] = profile[i, 0]-pos[i]
-        dedt = (err[i]-err[i-1])/dt
-        integral += err[i]*dt
-        vc = kp*err[i] + ki*integral + kd*dedt + kv*profile[i, 1]
-        if vc > 9:
-            vc = 9
-        # print(vc)
-    return pos, err, vel
+        pose[i, 0:3], lvc, l_ig = next_motor(lvc, kp, ki, kd, lka, lkv, pose[i-1,0], 
+            pose[i-1,1], pose[i-1,2], l_ig, lprofile[i-1,0], lprofile[i-1,1], dt)
+        pose[i, 3:6], rvc, r_ig = next_motor(rvc, kp, ki, kd, rka, rkv, pose[i-1,3], 
+            pose[i-1,4], pose[i-1,5], r_ig, rprofile[i-1,0], rprofile[i-1,1], dt)
+        delta_l = pose[i,0-pose[i-1],0]
+        delta_r = pose[i,3]-pose[i-1,3]
+        theta[i] = theta[i-1] + (delta_l-delta_r)/wb
+        e_theta = theta[i]-np.deg2rad(lprofile[i,4])
+    return pose
+
+    # pos = np.zeros_like(t)
+    # vel = np.zeros_like(t)
+    # err = np.zeros_like(t)
+    # integral = 0
+    # vc = 9
+    # for i in range(1, t.shape[0]):
+    #     dt = t[i]-t[i-1]
+    #     c2 = ka/kv*(vc/kv-vel[i-1])
+    #     c1 = -c2 + pos[i-1]
+    #     pos[i] = c1 + vc/kv*dt + c2*np.exp(-kv/ka*dt)
+    #     vel[i] = vc/kv-c2*kv/ka*np.exp(-kv/ka*dt)
+    #     err[i] = profile[i, 0]-pos[i]
+    #     dedt = (err[i]-err[i-1])/dt
+    #     integral += err[i]*dt
+    #     vc = kp*err[i] + ki*integral + kd*dedt + kv*profile[i, 1]
+    #     if vc > 9:
+    #         vc = 9
+    # return pos, err, vel
 
 def simulate(args):
     kv_l = args['kv_l']
@@ -58,7 +86,7 @@ def simulate(args):
     right_file = args['rightprof']
 
     dt = 0.001
-    dt_prof = 0.05
+    dt_prof = 0.02
 
     left_profile = prepare_profile(left_file)
     right_profile = prepare_profile(right_file)
@@ -67,8 +95,13 @@ def simulate(args):
     u_left = staircase(left_profile, t, dt, dt_prof)
     u_right = staircase(right_profile, t, dt, dt_prof)
 
-    pos_l, err_l, vel_l = simulate_motor(kp, ki, kd, ka_l, kv_l, u_left, t)
-    pos_r, err_r, vel_r = simulate_motor(kp, ki, kd, ka_r, kv_r, u_right, t)
+    pose = simulate_tank(kp, ki, kd, ka_l, kv_l, ka_r, kv_r, u_left, u_right, t, 26/12)
+    pos_l = pose[:,0]
+    err_l = pose[:,1]
+    vel_l = pose[:,2]
+    pos_r = pose[:,3]
+    err_l = pose[:,4]
+    vel_l = pose[:,5]
 
     trajectories = plot_mp(pos_l, pos_r, dt)
     trajectories_prof = plot_mp(u_left[:,0], u_right[:,0], dt)
@@ -99,20 +132,17 @@ def simulate(args):
     plt.ylabel('distance (ft)')
     plt.legend()
 
-    plt.figure()
-    plt.plot(t, err_l)
-
     plt.show()
 
-k_args = {'kp':10,
-'ki':0,
-'kd':0,
+k_args = {'kp':7,
+'ki':2,
+'kd':0.3,
 'kv_l':0.83,
 'ka_l':0.1,
 'kv_r':0.85,
 'ka_r':0.11,
-'leftprof':'demoLeft.csv',
-'rightprof':'demoRight.csv'
+'leftprof':'demoLeft2.csv',
+'rightprof':'demoRight2.csv'
 }
 simulate(k_args)
 

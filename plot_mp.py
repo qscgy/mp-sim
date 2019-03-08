@@ -39,7 +39,7 @@ def plot_mp(left, right, dt):
 def angle_between(lx, ly, rx, ry):
     delta_x = lx-rx
     delta_y = ly-ry
-    angle = 0
+    # angle = 0
     # if delta_x == 0:
     #     angle = np.pi/2
     # else:
