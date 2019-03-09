@@ -24,7 +24,7 @@ def staircase(profile, t, dt, dt_prof):
         u[int(i*ratio):int((i+1)*ratio)] = profile[i]
     return u
 
-def next_motor(vc, kp, ki, kd, ka, kv, last_pos, last_err,last_vel, ig, xset, vset, dt):
+def next_motor(vc, kp, ki, kd, ka, kv, last_pos, last_err, last_vel, ig, xset, vset, dt):
     c2 = ka/kv*(vc/kv-last_vel)
     c1 = -c2 + last_pos
     pos = c1 + vc/kv*dt + c2*np.exp(-kv/ka*dt)
@@ -36,24 +36,32 @@ def next_motor(vc, kp, ki, kd, ka, kv, last_pos, last_err,last_vel, ig, xset, vs
     if vc > 9:
         vc = 9
     return np.array([pos, err, vel]), vc, ig
-def simulate_tank(kp, ki, kd, lka, lkv, rka, rkv, lprofile, rprofile, t, wb):
+def simulate_tank(kp, ki, kd, lka, lkv, rka, rkv, lprofile, rprofile, t, wb, kpa, kia, kda):
     pose = np.zeros((t.shape[0], 6))
     l_ig = 0
     r_ig = 0
     theta = np.zeros_like(t)
+    theta_ig = 0
+    e_theta = np.zeros_like(t)
+    corr = 0
     lvc = 9
     rvc = 9
     for i in range(1, t.shape[0]):
         dt = t[i]-t[i-1]
-        pose[i, 0:3], lvc, l_ig = next_motor(lvc, kp, ki, kd, lka, lkv, pose[i-1,0], 
+        pose[i, 0:3], lvc, l_ig = next_motor(lvc, kp, ki, kd, lka, lkv, pose[i-1,0]-corr, 
             pose[i-1,1], pose[i-1,2], l_ig, lprofile[i-1,0], lprofile[i-1,1], dt)
-        pose[i, 3:6], rvc, r_ig = next_motor(rvc, kp, ki, kd, rka, rkv, pose[i-1,3], 
+        pose[i, 3:6], rvc, r_ig = next_motor(rvc, kp, ki, kd, rka, rkv, pose[i-1,3]+corr, 
             pose[i-1,4], pose[i-1,5], r_ig, rprofile[i-1,0], rprofile[i-1,1], dt)
-        delta_l = pose[i,0-pose[i-1],0]
+        delta_l = pose[i,0]-pose[i-1,0]
         delta_r = pose[i,3]-pose[i-1,3]
-        theta[i] = theta[i-1] + (delta_l-delta_r)/wb
-        e_theta = theta[i]-np.deg2rad(lprofile[i,4])
-    return pose
+        tp = (delta_r-delta_l)/wb
+        theta[i] = theta[i-1] + tp
+        e_theta[i] = np.deg2rad(lprofile[i,4])-theta[i]
+        et_deriv = (e_theta[i]-e_theta[i-1])/dt
+        theta_ig += e_theta[i]*dt
+        corr = kpa*e_theta[i] + kia*et_deriv + kda*et_deriv
+
+    return pose, theta
 
     # pos = np.zeros_like(t)
     # vel = np.zeros_like(t)
@@ -82,6 +90,9 @@ def simulate(args):
     kp = args['kp']
     ki = args['ki']
     kd = args['kd']
+    kpa = args['kpa']
+    kia = args['kia']
+    kda = args['kda']
     left_file = args['leftprof']
     right_file = args['rightprof']
 
@@ -95,7 +106,8 @@ def simulate(args):
     u_left = staircase(left_profile, t, dt, dt_prof)
     u_right = staircase(right_profile, t, dt, dt_prof)
 
-    pose = simulate_tank(kp, ki, kd, ka_l, kv_l, ka_r, kv_r, u_left, u_right, t, 26/12)
+    pose, theta = simulate_tank(kp, ki, kd, ka_l, kv_l, ka_r, kv_r, u_left, u_right, t, 26/12,
+        kpa, kia, kda)
     pos_l = pose[:,0]
     err_l = pose[:,1]
     vel_l = pose[:,2]
@@ -110,13 +122,13 @@ def simulate(args):
     plt.plot(trajectories_prof[:,1], trajectories_prof[:,2], label='intended left')
     plt.plot(trajectories_prof[:,3], trajectories_prof[:,4], label='intended right')
     plt.plot(trajectories[:,1], trajectories[:,2], label='actual left')
-    plt.plot(trajectories[:,3], trajectories[:,4], label='actual rigt')
+    plt.plot(trajectories[:,3], trajectories[:,4], label='actual right')
     plt.title('Intended vs. Actual Trajectories')
     plt.xlabel('x displacement (ft)')
     plt.ylabel('y displacement (ft')
     plt.legend()
 
-    plt.figure(figsize=(8, 8))
+    plt.figure(figsize=(6, 6))
     plt.subplot(211)
     plt.plot(t, u_left[:,0], label='left profile')
     plt.plot(t, pos_l, label='actual left distance')
@@ -132,15 +144,26 @@ def simulate(args):
     plt.ylabel('distance (ft)')
     plt.legend()
 
+    plt.figure()
+    plt.plot(t, u_left[:,4], label='intended theta')
+    plt.plot(t, theta*180/np.pi, label='actual theta')
+    plt.legend()
+    plt.title('Intended vs. Actual Theta')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Angle (degrees)')
+
     plt.show()
 
 k_args = {'kp':7,
-'ki':2,
+'ki':0,
 'kd':0.3,
 'kv_l':0.83,
 'ka_l':0.1,
 'kv_r':0.85,
 'ka_r':0.11,
+'kpa':0.2,
+'kia':0,
+'kda':0,
 'leftprof':'demoLeft2.csv',
 'rightprof':'demoRight2.csv'
 }
