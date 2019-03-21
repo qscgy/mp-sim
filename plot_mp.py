@@ -3,8 +3,8 @@ import numpy as np
 # Copyright (c) 2018-2019 Sam Ehrenstein. The full copyright notice is at the bottom of this file.
 
 # Plots a motion profile. This is mostly a Python port of Noah Gleason's drawMP R script.
-def plot_mp(left, right, dt):
-    wheelbase_dia = 26.0/12  # Effective wheelbase; see whitepaper
+def plot_mp(left, right, wb, dt):
+    wheelbase_dia = wb  # Effective wheelbase; see whitepaper
     startingCenter = (0, 0)  # can be arbitrary for now
 
     out = np.zeros((left.shape[0], 5))

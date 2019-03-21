@@ -1,173 +1,89 @@
 import numpy as np
 import pandas as pd
 from plot_mp import plot_mp, deviation
-import bokeh.plotting as bp
-from bokeh.layouts import gridplot, widgetbox, column
-from bokeh.models.widgets import Panel, Tabs, TextInput, Button, Div
-from bokeh.io import curdoc
-from bokeh.models import ColumnDataSource
 import matplotlib.pyplot as plt
+from util import *
 
 # Copyright (c) 2018-2019 Sam Ehrenstein. The full copyright notice is at the bottom of this file.
 
-def prepare_profile(filename):
-    prof = pd.read_csv(filename, skiprows=[0], header=None).values
-    prof = prof[:, 0:5]
-    return prof
 
-# Expands the profile to be the length of t such that u(t) has the last value that would have been sent
-# This is used instead of interpolating because the setpoint is updated slower than the robot's response time
-def staircase(profile, t, dt, dt_prof):
-    """
-    Given a profile with some time step, returns a new profile with the same value
-    at any given time, but with a different time step. In other words, a zeroth-order
-    interpolation of the profile with a new time step.
+class Motor():
+    """Represents a motor or motor cluster."""
+    def __init__(self, ka, kv):
+        self.ka = ka
+        self.kv = kv
+
+    def next(self, last_pos, last_vel, vc, dt):
+        c2 = self.ka/self.kv*(vc/self.kv-last_vel)
+        c1 = -c2 + last_pos
+        pos = c1 + vc/self.kv*dt + c2*np.exp(-self.kv/self.ka*dt)
+        vel = vc/self.kv-c2*self.kv/self.ka*np.exp(-self.kv/self.ka*dt)
+        return pos, vel
+
+
+class PIDMotor():
+    def __init__(self, kp, ki, kd, motor, profile, t):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.motor = motor
+        self.profile = profile
+        self.t = t
+        self.error = np.zeros_like(t)
+        self.pos = np.zeros_like(t)
+        self.vel = np.zeros_like(t)
+        self.ig = 0
     
-    Args:
-        profile (np.array): the profile to staircase
-        t (np.array): the array times at which the returned profile should have values
-        dt (float): the time step of t;  should divide into dt_prof
-        dt_prof (float): the time step of profile
+    def next(self, vc, i, dt):
+        self.pos[i], self.vel[i] = self.motor.next(self.pos[i-1], self.vel[i-1], vc, dt)
+        self.error[i] = self.profile[i,0]-self.pos[i]
+        dedt = (self.error[i]-self.error[i-1])/dt
+        self.ig += self.error[i]*dt
+        vc = self.kp*self.error[i] + self.ki*self.ig + self.kd*dedt + self.motor.kv*self.profile[i,1]
+        if vc > 9:
+            vc = 9
+        return self.pos[i], self.vel[i], vc
 
-    Returns:
-        np.array: the new profile
-    """
-    u = np.zeros((t.shape[0], 5))
-    ratio = dt_prof/dt
-    for i in range(profile.shape[0]):
-        u[int(i*ratio):int((i+1)*ratio)] = profile[i]
-    return u
 
-def next_motor(vc, kp, ki, kd, ka, kv, last_pos, last_vel, dt):
-    """
-    Given the constants for a system moved by a motor under PID control and 
-    information about its state at the start of a time slice, returns its 
-    state after some time `dt` has passed.
+class TankDrive():
+    def __init__(self, lmotor, rmotor, wb):
+        self.lmotor = lmotor
+        self.rmotor = rmotor
+        self.wb = wb
+    
+    def simulate(self, kp, ki, kd, kpa, kia, kda, lprofile, rprofile, t):
+        left = PIDMotor(kp, ki, kd, self.lmotor, lprofile, t)
+        right = PIDMotor(kp, ki, kd, self.rmotor, rprofile, t)
+        pose = np.zeros((t.shape[0], 6))
+        theta = np.zeros_like(t)
+        theta_ig = 0
+        e_theta = np.zeros_like(t)
+        corr = 0
+        lvc = 9
+        rvc = 9
+        dt = t[1]-t[0]
+        dt_rr = lprofile[0, 3]      # dt of roboRIO
+        ratio = int(dt_rr/dt)
+        for i in range(1, t.shape[0]):
+            pose[i, 0], pose[i, 2], lvc = left.next(lvc-corr, i, dt) # run left for dt and get PID output
+            pose[i, 3], pose[i,5], rvc = right.next(rvc+corr, i, dt)
 
-    Args:
-        vc (float): the voltage at the start of the time slice
-        kp (float): the P constant in the PID loop
-        ki (float): the I constant in the PID loop
-        kd (float): the D constant in the PID loop
-        ka (float): the kA for the motor, see README
-        kv (float): the kV for the motor, see README
-        last_pos (float): distance traveled by the system at the start of the time slice
-        last_vel (float): velocity of the system at the start of the time slice
-        dt (float): the length of the time slice
+            # The roboRIO runs slower than the Talons, so it only applies angular correction on its updates.
+            if i % ratio == 0:
+                delta_l = pose[i,0]-pose[i-ratio,0]
+                delta_r = pose[i,3]-pose[i-ratio,3]
+                tp = (delta_r-delta_l)/self.wb
+                theta[i] = theta[i-ratio] + tp
+                corr, e_theta[i], theta_ig = next_pid(kpa, kia, kda, 0, theta[i], 0, e_theta[i-ratio],
+                    theta_ig, np.deg2rad(lprofile[i, 4]), 0, dt_rr)
+            else:
+                theta[i] = theta[i-1]
+                e_theta[i] = e_theta[i-1]
 
-    Returns:
-        np.array: an array of the form [position, error, velocity]
-        float: the voltage at the end of 
-    """    
-    c2 = ka/kv*(vc/kv-last_vel)
-    c1 = -c2 + last_pos
-    pos = c1 + vc/kv*dt + c2*np.exp(-kv/ka*dt)
-    vel= vc/kv-c2*kv/ka*np.exp(-kv/ka*dt)
-    return pos, vel
+        pose[:,1] = left.error
+        pose[:,4] = right.error
+        return pose, theta
 
-def next_pid(kp, ki, kd, kv, pos, vel, last_err, ig, xset, vset, dt):
-    """
-    Computes the next output value of a motor-system under position PID control
-    with a velocity feedforward.
-
-    Args:
-        kp (float): P value in the PID
-        ki (float): I value in the PID
-        kd (float): D value in the PID
-        kv (float): kV of the system, see README
-        pos (float): the current linear position
-        vel (float): the current linear velocity
-        last_err (float): the last value of the position error
-        ig (float): the integral of the position error
-        xset (float): the current position setpoint
-        vset (float): the current velocity setpoint
-        dt (float): the time step of the simulation
-
-    Returns:
-        float: the next output
-        float: the current position error
-        float: the current integral of the error
-    """    
-    err = xset-pos
-    dedt = (err-last_err)/dt
-    ig += err*dt
-    vc = kp*err + ki*ig + kd*dedt + kv*vset
-    if vc > 9:
-        vc = 9
-    return vc, err, ig
-
-def simulate_tank(kp, ki, kd, lka, lkv, rka, rkv, lprofile, rprofile, t, wb, kpa, kia, kda):
-    """
-    Simulates a tank-drive robot following motion profiles under position PID contro
-    with a velocity feedforward, cascaded with an outer PID loop on angular heading.
-
-    Args:
-        kp (float): P value in the position PID
-        ki (float): I value in the position PID
-        kd (float): D value in the position PID
-        lka (float): left side kA, see README
-        lkv (float): left side kV, see README
-        rka (float): right side kA, see README
-        rkv (float): right side kV, see README
-        lprofile (np.array): left side profile, columns are position, velocity, acceleration, dt, heading
-        rprofile (np.array): right side profile, same format as left side
-        t (np.array): 1D array of the times at which the profile is evaluated
-        wb (float): effective wheelbase diameter
-        kpa (float): P in angular PID
-        kia (float): I in angular PID
-        kda (float): D in angular PID
-
-    Returns:
-        np.array: an array with as many rows as t and 6 columns containing the pose,
-        in the form left pos, left err, left vel, right pos, right err, right vel
-        np.array : an array with the same shape as t, containing the heading at each time
-    """    
-    pose = np.zeros((t.shape[0], 6))
-    l_ig = 0
-    r_ig = 0
-    theta = np.zeros_like(t)
-    theta_ig = 0
-    e_theta = np.zeros_like(t)
-    corr = 0
-    lvc = 9
-    rvc = 9
-    for i in range(1, t.shape[0]):
-        dt = t[i]-t[i-1]
-        pose[i, 0], pose[i, 2] = next_motor(lvc, kp, ki, kd, lka, lkv, pose[i-1,0]-corr,
-            pose[i-1,2], dt)
-        lvc, pose[i, 1], l_ig = next_pid(kp, ki, kd, lkv, pose[i, 0], pose[i,2], pose[i-1,1],l_ig,
-            lprofile[i,0], lprofile[i,1], dt)
-        pose[i, 3], pose[i,5] = next_motor(rvc, kp, ki, kd, rka, rkv, pose[i-1,3]+corr, 
-            pose[i-1,5], dt)
-        rvc, pose[i, 4], r_ig = next_pid(kp, ki, kd, rkv, pose[i, 3], pose[i,5],pose[i-1,4], r_ig,
-            rprofile[i,0], rprofile[i,1], dt)
-        delta_l = pose[i,0]-pose[i-1,0]
-        delta_r = pose[i,3]-pose[i-1,3]
-        tp = (delta_r-delta_l)/wb
-        theta[i] = theta[i-1] + tp
-        corr, e_theta[i], theta_ig = next_pid(kpa, kia, kda, 0, theta[i], 0, e_theta[i-1],
-            theta_ig, np.deg2rad(lprofile[i, 4]), 0, dt)
-
-    return pose, theta
-
-    # pos = np.zeros_like(t)
-    # vel = np.zeros_like(t)
-    # err = np.zeros_like(t)
-    # integral = 0
-    # vc = 9
-    # for i in range(1, t.shape[0]):
-    #     dt = t[i]-t[i-1]
-    #     c2 = ka/kv*(vc/kv-vel[i-1])
-    #     c1 = -c2 + pos[i-1]
-    #     pos[i] = c1 + vc/kv*dt + c2*np.exp(-kv/ka*dt)
-    #     vel[i] = vc/kv-c2*kv/ka*np.exp(-kv/ka*dt)
-    #     err[i] = profile[i, 0]-pos[i]
-    #     dedt = (err[i]-err[i-1])/dt
-    #     integral += err[i]*dt
-    #     vc = kp*err[i] + ki*integral + kd*dedt + kv*profile[i, 1]
-    #     if vc > 9:
-    #         vc = 9
-    # return pos, err, vel
 
 def simulate(args):
     kv_l = args['kv_l']
@@ -180,11 +96,12 @@ def simulate(args):
     kpa = args['kpa']
     kia = args['kia']
     kda = args['kda']
+    wb = args['wb']
     left_file = args['leftprof']
     right_file = args['rightprof']
 
     dt = 0.001
-    dt_prof = 0.02
+    dt_prof = 0.05
 
     left_profile = prepare_profile(left_file)
     right_profile = prepare_profile(right_file)
@@ -192,8 +109,10 @@ def simulate(args):
     u_left = staircase(left_profile, t, dt, dt_prof)
     u_right = staircase(right_profile, t, dt, dt_prof)
 
-    pose, theta = simulate_tank(kp, ki, kd, ka_l, kv_l, ka_r, kv_r, u_left, u_right, t, 26/12,
-        kpa, kia, kda)
+    left = Motor(ka_l, kv_l)
+    right = Motor(ka_r, kv_r)
+    drive = TankDrive(left, right, wb)
+    pose, theta = drive.simulate(kp, ki, kd, kpa, kia, kda, u_left, u_right, t)
     pos_l = pose[:,0]
     err_l = pose[:,1]
     vel_l = pose[:,2]
@@ -201,8 +120,8 @@ def simulate(args):
     err_l = pose[:,4]
     vel_l = pose[:,5]
 
-    trajectories = plot_mp(pos_l, pos_r, dt)
-    trajectories_prof = plot_mp(u_left[:,0], u_right[:,0], dt)
+    trajectories = plot_mp(pos_l, pos_r, wb, dt)
+    trajectories_prof = plot_mp(u_left[:,0], u_right[:,0], wb, dt)
 
     plt.figure()
     plt.plot(trajectories_prof[:,1], trajectories_prof[:,2], label='intended left')
@@ -247,9 +166,10 @@ k_args = {'kp':7,
 'ka_l':0.1,
 'kv_r':0.85,
 'ka_r':0.11,
-'kpa':0.2,
+'kpa':0,
 'kia':0,
 'kda':0,
+'wb':26/12,
 'leftprof':'demoLeft2.csv',
 'rightprof':'demoRight2.csv'
 }
